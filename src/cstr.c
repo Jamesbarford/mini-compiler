@@ -250,9 +250,10 @@ cstrCatPrintf(cstr *s, const char *fmt, ...)
 
     char *buf = malloc(sizeof(char) * bufferlen);
     int actual_len = vsnprintf(buf, bufferlen, fmt, ap);
+    printf("[%d]$%s\n", actual_len, buf);
     buf[actual_len] = '\0';
 
-    cstr *new = cstrCatLen(s, buf, bufferlen);
+    cstr *new = cstrCatLen(s, buf, actual_len);
 
     free(buf);
     va_end(ap);

@@ -80,6 +80,9 @@ void
 getRegister(unsigned char *reg, int mod, int reg_idx)
 {
     char *suffix = register_suffix[reg_idx];
+    /* 32 bit */
+    reg[0] = 'E';
+
     /* 64 bit */
     if (mod == 0x48) {
         reg[0] = 'R';
@@ -89,8 +92,6 @@ getRegister(unsigned char *reg, int mod, int reg_idx)
         reg[2] = '\0';
         return;
     }
-    /* 32 bit */
-    reg[0] = 'E';
     memcpy(reg + 1, suffix, 2);
     reg[3] = '\0';
 }
@@ -322,59 +323,12 @@ parse(unsigned char **input, unsigned char **dst)
     debug_panic("Should not have got here\n");
 }
 
-char
-intToHex(int n)
-{
-    switch (n) {
-    case 0:
-        return '0';
-    case 1:
-        return '1';
-    case 2:
-        return '2';
-    case 3:
-        return '3';
-    case 4:
-        return '4';
-    case 5:
-        return '5';
-    case 6:
-        return '6';
-    case 7:
-        return '7';
-    case 8:
-        return '8';
-    case 9:
-        return '9';
-    case 10:
-        return 'A';
-    case 11:
-        return 'B';
-    case 12:
-        return 'C';
-    case 13:
-        return 'D';
-    case 14:
-        return 'E';
-    case 15:
-        return 'F';
-    }
-    debug_panic("Invalid number\n");
-}
-
-void
-tohex(char *hex, int n)
-{
-    hex[0] = intToHex(n & 0xF);
-    hex[1] = intToHex((n >> 4) & 0xF);
-}
-
 /* Display connection and port */
 static void
 cliReloadPrompt(char *prompt)
 {
-    cstr *_prompt = cstrEmpty(PROMPT_LEN);
 
+    cstr *_prompt = cstrnew();
     _prompt = cstrCat(_prompt, "machine > ");
 
     snprintf(prompt, PROMPT_LEN, "%s", _prompt);
@@ -384,16 +338,15 @@ cliReloadPrompt(char *prompt)
 cstr *
 unassembleMachineCode(unsigned char *m)
 {
-    cstr *assembly = cstrEmpty(1 << 10);
+    cstr *assembly = cstrnew();
     unsigned char *ptr = m;
     int bit_mode = 0x48;
     unsigned char reg_1[4] = { '\0' };
     unsigned char reg_2[4] = { '\0' };
     unsigned char tmp[10] = { '\0' };
-    cstr *machine_instruction = cstrEmpty(1 << 10);
+    cstr *machine_instruction = cstrnew();
 
-    while (*ptr) {
-        printf("%x\n", *ptr);
+    while (1) {
         int machine_code = *ptr;
         char *instruction = single_byte_instruction[machine_code];
         machine_instruction = cstrCat(machine_instruction, "0x");
@@ -402,7 +355,7 @@ unassembleMachineCode(unsigned char *m)
             ptr++;
             bit_mode = 0x48;
             machine_instruction = cstrCatPrintf(machine_instruction, "%X%X",
-                    machine_code & 0xF, (machine_code >> 4) & 0xF);
+                    (machine_code >> 4) & 0xF, machine_code & 0xF);
             machine_code = *ptr;
             instruction = single_byte_instruction[machine_code];
         }
@@ -410,31 +363,31 @@ unassembleMachineCode(unsigned char *m)
         if (machine_code >= 0x50 && machine_code <= 0x57) {
             getRegister(reg_1, bit_mode, machine_code & 0xF - 8);
             machine_instruction = cstrCatPrintf(machine_instruction, "%X%X",
-                    machine_code & 0xF, (machine_code >> 4) & 0xF);
-            assembly = cstrCatPrintf(assembly, "%-*s", 5, "PUSH");
+                    (machine_code >> 4) & 0xF, machine_code & 0xF);
+            assembly = cstrCatPrintf(assembly, "%-*s %s", 5, "PUSH", reg_1);
+
         } else if (machine_code >= 0x58 && machine_code <= 0x5F) {
             getRegister(reg_1, bit_mode, machine_code & 0xF - 8);
             machine_instruction = cstrCatPrintf(machine_instruction, "%X%X",
-                    machine_code & 0xF, (machine_code >> 4) & 0xF);
-            assembly = cstrCatPrintf(assembly, "%-*s", 5, "POP");
+                    (machine_code >> 4) & 0xF, machine_code & 0xF);
+            assembly = cstrCatPrintf(assembly, "%-*s %s", 5, "POP", reg_1);
+
         } else if (machine_code >= 0xB8 && machine_code <= 0xBF) {
             getRegister(reg_1, bit_mode, machine_code & 0xF - 8);
             machine_instruction = cstrCatPrintf(machine_instruction, "%X%X",
-                    machine_code & 0xF, (machine_code >> 4) & 0xF);
+                    (machine_code >> 4) & 0xF, machine_code & 0xF);
 
             ptr++;
-            printf(">>>%d\n", *(ptr + 7));
             memcpy(tmp, ptr, 8);
             tmp[9] = '\0';
 
             unsigned long num = decodeLong(tmp);
-            printf("unsigned long => %ld\n", num);
             machine_instruction = cstrCatPrintf(machine_instruction, "%08X",
                     num);
             assembly = cstrCatPrintf(assembly, "%-*s %s,%ld", 5, "MOV", reg_1,
                     num);
-            /* move past the number */
-            ptr += 8;
+            /* move past the number, the loop will handle the next +1 */
+            ptr += 7;
         } else if (instruction &&
                 machine_code != 0x0F) { /* Not equal 2 byte instruction */
             switch (machine_code) {
@@ -442,15 +395,18 @@ unassembleMachineCode(unsigned char *m)
                 bit_mode = 0x48;
                 break;
             case 0xC3: /* RET */
-                break;
+                assembly = cstrCatPrintf(assembly, "%s\n", instruction);
+                machine_instruction = cstrCatPrintf(machine_instruction, "%X\n",
+                        machine_code);
+                goto out;
             case 0xF7: { /* IDIV */
                 ptr++;
                 unsigned int modrm = *ptr;
                 unsigned int rm = modrm & 0x07;
                 getRegister(reg_1, bit_mode, rm);
-                machine_instruction = cstrCatPrintf(machine_instruction, "%X%X",
-                        machine_code, modrm);
-                assembly = cstrCatPrintf(assembly, "%*-s %s", 4, instruction,
+                machine_instruction = cstrCatPrintf(machine_instruction,
+                        "%02X%02X", machine_code, modrm);
+                assembly = cstrCatPrintf(assembly, "%*-s %s", 5, instruction,
                         reg_1);
                 break;
             }
@@ -461,11 +417,11 @@ unassembleMachineCode(unsigned char *m)
                 unsigned int modrm = *ptr;
                 unsigned int rm = modrm & 0x07;
                 unsigned int reg = (modrm >> 3) & 0x07;
-                machine_instruction = cstrCatPrintf(machine_instruction, "%X%X",
-                        machine_code, modrm);
+                machine_instruction = cstrCatPrintf(machine_instruction,
+                        "%02X%02X", machine_code, modrm);
                 getRegister(reg_1, bit_mode, reg);
                 getRegister(reg_2, bit_mode, rm);
-                assembly = cstrCatPrintf(assembly, "%-*s %s,%s", instruction,
+                assembly = cstrCatPrintf(assembly, "%-*s %s,%s", 5, instruction,
                         reg_1, reg_2);
                 break;
             }
@@ -482,11 +438,11 @@ unassembleMachineCode(unsigned char *m)
                 unsigned int modrm = *ptr;
                 unsigned int rm = modrm & 0x07;
                 unsigned int reg = (modrm >> 3) & 0x07;
-                machine_instruction = cstrCatPrintf(machine_instruction, "%X%X",
-                        machine_code, modrm);
+                machine_instruction = cstrCatPrintf(machine_instruction,
+                        "%02X%02X", machine_code, modrm);
                 getRegister(reg_1, bit_mode, reg);
                 getRegister(reg_2, bit_mode, rm);
-                assembly = cstrCatPrintf(assembly, "%-*s %s,%s", instruction,
+                assembly = cstrCatPrintf(assembly, "%-*s %s,%s", 5, instruction,
                         reg_1, reg_2);
                 break;
             }
@@ -496,6 +452,7 @@ unassembleMachineCode(unsigned char *m)
         ptr++;
     }
 
+out:
     printf("Assembly: \n%s\n--\n", assembly);
     printf("Machine: \n%s\n--\n", machine_instruction);
 
@@ -507,7 +464,7 @@ main(void)
 {
     unsigned char *src;
     unsigned char *dst;
-    unsigned char *code = malloc(sizeof(char) * 2048);
+    unsigned char *shellcode = malloc(sizeof(char) * 2048);
     char prompt[PROMPT_LEN] = { '\0' };
 
     rl_bind_key('\t', rl_complete);
@@ -529,20 +486,33 @@ main(void)
 
         if (input && len) {
             src = input;
-            dst = code;
+            dst = shellcode;
             parseTerm(&src, &dst, PREC_PAREN);
             if (parse(&src, &dst) != PREC_EOF) {
                 debug("maybe an error!\n");
             }
-            unassembleMachineCode(code);
+
+            for (unsigned char *p = shellcode; *p != 0xc3; ++p) {
+                printf("b'%02x\n", *p);
+            }
+
+            unassembleMachineCode(shellcode);
         } else {
             free(input);
             break;
         }
 
+        /*
+        int value = 0;
+        int (*func)() = (int(*)())shellcode;
+        value = func();
+        printf("%d\n", value);
+
+        memset(shellcode, '\0', 2048);
+        */
         free(input);
         cliReloadPrompt(prompt);
     }
 
-    free(code);
+    free(shellcode);
 }
