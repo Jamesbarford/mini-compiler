@@ -49,7 +49,7 @@ Shellcode:
 - sds inspiration for the `cstr.c` implementation [sds](https://github.com/cia-foundation/TempleOS/blob/archive/Demo/Lectures/MiniCompiler.HC)
 
 ## *Shellcode
-I cannot get the shellcode to execute but feel it should? I have the following `c` code:
+I cannot get the shellcode to execute but feel it should? I have the following `c` code, help appreciated:
 ```c
 static unsigned char *example_shell_code = "\x48\xb8\x00\x00\x00\x00\x00\x00\x00\x04\x50\x48\xb8\x00\x00\x00\x00\x00\x00\x00\x04\x50\x5a\x58\x48\x03\xc2\x50\x58\xc3";
 
