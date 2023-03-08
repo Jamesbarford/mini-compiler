@@ -9,7 +9,7 @@ $(OUTDIR)/%.o: %.c
 all: $(TARGET)
 
 OBJS = $(OUTDIR)/compiler.o \
-	$(OUTDIR)/cstr.o
+       $(OUTDIR)/cstr.o
 
 $(TARGET): $(OBJS)
 	$(CC) -o $(TARGET) $(OBJS) -lreadline -lm
@@ -26,6 +26,5 @@ format-headers:
 
 format: format-code format-headers
 
-complier.o: ./compiler.c ./cstr.h ./num.h
-cstr.o: ./cstr.c ./cstr.h ./num.h
-num.o: ./num.c ./num.h
+complier.o: ./compiler.c ./cstr.h
+cstr.o: ./cstr.c ./cstr.h

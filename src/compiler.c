@@ -327,8 +327,7 @@ parse(unsigned char **input, unsigned char **dst)
 static void
 cliReloadPrompt(char *prompt)
 {
-
-    unsigned int len = snprintf(prompt, PROMPT_LEN, "machine >");
+    unsigned int len = snprintf(prompt, PROMPT_LEN, ">>> ");
     prompt[len] = '\0';
 }
 
@@ -456,9 +455,21 @@ out:
     return assembly;
 }
 
+void
+shellcodePrint(unsigned char *shellcode, unsigned char term)
+{
+    printf("Shellcode: \n");
+    unsigned char *p;
+    for (p = shellcode; *p != term; ++p) {
+        printf("\\x%02x", *p);
+    }
+    printf("\\x%02x\n", *p);
+}
+
 int
 main(void)
 {
+    printf("Arbitrary integer calculator\n");
     unsigned char *src;
     unsigned char *dst;
     unsigned char *shellcode = malloc(sizeof(char) * 2048);
@@ -489,11 +500,8 @@ main(void)
                 debug("maybe an error!\n");
             }
 
-            for (unsigned char *p = shellcode; *p != 0xc3; ++p) {
-                printf("b'%02x\n", *p);
-            }
-
             unassembleMachineCode(shellcode);
+            shellcodePrint(shellcode, 0xC3);
         } else {
             free(input);
             break;
