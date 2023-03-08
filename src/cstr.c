@@ -48,7 +48,7 @@ cstrSetNum(cstr *str, unsigned int num, int type, char terminator)
 }
 
 /* Set unsigned int for length of string and NULL terminate */
-void
+static void
 cstrSetLen(cstr *str, unsigned int len)
 {
     cstrSetNum(str, len, CSTR_LEN, '\0');
@@ -56,7 +56,7 @@ cstrSetLen(cstr *str, unsigned int len)
 }
 
 /* Set unsigned int for capacity of string buffer */
-void
+static void
 cstrSetCapacity(cstr *str, unsigned int capacity)
 {
     cstrSetNum(str, capacity, CSTR_CAPACITY, '\n');
@@ -80,22 +80,15 @@ cstrGetNum(cstr *str, int type)
             ((unsigned int)_str[2] << 8) | (unsigned int)_str[3];
 }
 
-/* Get the integer out of the string */
-unsigned int
-cstrlen(cstr *str)
-{
-    return cstrGetNum(str, CSTR_LEN);
-}
-
 /* Get the size of the buffer */
-unsigned int
+static unsigned int
 cstrCapacity(cstr *str)
 {
     return cstrGetNum(str, CSTR_CAPACITY);
 }
 
 /* Grow the capacity of the string buffer by `additional` space */
-cstr *
+static cstr *
 cstrExtendBuffer(cstr *str, unsigned int additional)
 {
     unsigned int current_capacity = cstrCapacity(str);
@@ -121,6 +114,13 @@ cstrExtendBuffer(cstr *str, unsigned int additional)
     return (cstr *)_str;
 }
 
+/* Get the integer out of the string */
+unsigned int
+cstrlen(cstr *str)
+{
+    return cstrGetNum(str, CSTR_LEN);
+}
+
 /* Only extend the buffer if the additional space required would overspill the
  * current allocated capacity of the buffer */
 static cstr *
@@ -137,26 +137,22 @@ cstrExtendBufferIfNeeded(cstr *str, unsigned int additional)
     return str;
 }
 
+/* Create a new string buffer with a capacity of 2 ^ 8 */
 cstr *
-cstrEmpty(unsigned int capacity)
+cstrnew(void)
 {
     cstr *out;
+    unsigned int capacity = 1 << 8;
 
-    if ((out = calloc(sizeof(char), (capacity + 2) + (CSTR_PAD * 2))) == NULL)
+    if ((out = calloc(sizeof(char), (capacity + 2) + (CSTR_PAD * 2))) == NULL) {
         return NULL;
+    }
 
     out += (CSTR_PAD * 2);
     cstrSetLen(out, 0);
     cstrSetCapacity(out, capacity);
 
     return out;
-}
-
-/* Create a new string buffer with a capacity of 2 ^ 8 */
-cstr *
-cstrnew(void)
-{
-    return cstrEmpty(1 << 8);
 }
 
 cstr *
@@ -172,65 +168,10 @@ cstrCatLen(cstr *str, const void *buf, unsigned int len)
     return str;
 }
 
-/* Add one character to the end of a string */
-cstr *
-cstrCatChar(cstr *s, char c)
-{
-    unsigned int curlen = cstrlen(s);
-    s = cstrExtendBufferIfNeeded(s, 1);
-    if (s == NULL) {
-        return NULL;
-    }
-    s[curlen - 1] = c;
-    s[curlen] = '\0';
-    cstrSetLen(s, curlen + 1);
-    return s;
-}
-
 cstr *
 cstrCat(cstr *str, char *s)
 {
     return cstrCatLen(str, s, (unsigned int)strlen(s));
-}
-
-/* Append cstr `s2` to `str`
- *
- * Pointer from this function must be used, all references need to be
- * updated to use this pointer
- */
-cstr *
-cstrCatCstr(cstr *str, cstr *s2)
-{
-    return cstrCatLen(str, s2, cstrlen(s2));
-}
-
-/**
- * Add pattern to the end of a string E.G:
- *
- * cstrPadEnd(s, 5, " ");
- *
- * will add 5 to the end of the string ' ' if the string is less than 5
- */
-cstr *
-cstrPadEnd(cstr *s, int desired_size, char *pattern)
-{
-    unsigned int len = cstrlen(s);
-    /* Make smaller ?*/
-    if (len > desired_size) {
-        return s;
-    }
-
-    char *p = pattern;
-    while (len != desired_size) {
-        /* Wrap backaround again*/
-        if (*p == '\0') {
-            p = pattern;
-        }
-        cstrCatChar(s, *p);
-        p++;
-    }
-
-    return s;
 }
 
 /**
@@ -250,7 +191,6 @@ cstrCatPrintf(cstr *s, const char *fmt, ...)
 
     char *buf = malloc(sizeof(char) * bufferlen);
     int actual_len = vsnprintf(buf, bufferlen, fmt, ap);
-    printf("[%d]$%s\n", actual_len, buf);
     buf[actual_len] = '\0';
 
     cstr *new = cstrCatLen(s, buf, actual_len);
