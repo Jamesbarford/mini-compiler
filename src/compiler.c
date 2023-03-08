@@ -328,11 +328,8 @@ static void
 cliReloadPrompt(char *prompt)
 {
 
-    cstr *_prompt = cstrnew();
-    _prompt = cstrCat(_prompt, "machine > ");
-
-    snprintf(prompt, PROMPT_LEN, "%s", _prompt);
-    cstrRelease(_prompt);
+    unsigned int len = snprintf(prompt, PROMPT_LEN, "machine >");
+    prompt[len] = '\0';
 }
 
 cstr *
