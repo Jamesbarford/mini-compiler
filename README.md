@@ -46,7 +46,7 @@ Shellcode:
 
 ## References
 - Original MiniCompiler.HC [MiniCompiler](https://github.com/cia-foundation/TempleOS/blob/archive/Demo/Lectures/MiniCompiler.HC)
-- sds inspiration for the `cstr.c` implementation [sds](https://github.com/cia-foundation/TempleOS/blob/archive/Demo/Lectures/MiniCompiler.HC)
+- sds inspiration for the `cstr.c` implementation [sds](https://github.com/antirez/sds)
 
 ## *Shellcode
 I cannot get the shellcode to execute but feel it should? I have the following `c` code, help appreciated:
