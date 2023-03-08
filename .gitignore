@@ -1,0 +1,9 @@
+./*.json
+*.dSYM
+parser
+scratch
+a.out
+num
+*.o
+./perf
+compiler
