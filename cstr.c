@@ -1,3 +1,6 @@
+/**
+ * Make c strings slightly less painful to work with
+ */
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -6,8 +9,6 @@
 
 typedef char cstr;
 
-#define CSTR_ERR -1
-#define CSTR_OK 1
 #define CSTR_PAD (sizeof(unsigned int) + 1)
 #define CSTR_CAPACITY (0)
 #define CSTR_LEN (1)

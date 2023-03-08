@@ -469,7 +469,7 @@ shellcodePrint(unsigned char *shellcode, unsigned char term)
 int
 main(void)
 {
-    printf("Arbitrary integer calculator\n");
+    printf("Mini Compiler Masquerading as a Calculator\nv0.0.1 2023\n");
     unsigned char *src;
     unsigned char *dst;
     unsigned char *shellcode = malloc(sizeof(char) * 2048);

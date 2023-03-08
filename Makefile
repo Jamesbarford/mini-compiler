@@ -1,4 +1,4 @@
-TARGET := compiler 
+TARGET := mcmc
 CC     := gcc
 OUTDIR := .
 CFLAGS = -Wall -O2 -DDEBUG

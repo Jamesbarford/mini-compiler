@@ -7,3 +7,4 @@ num
 *.o
 ./perf
 compiler
+mcmc
